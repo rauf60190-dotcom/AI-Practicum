@@ -10,8 +10,8 @@ android {
         applicationId = "com.aipracticum.app"
         minSdk = 29
         targetSdk = 35
-        versionCode = 13
-        versionName = "8.12.1"
+        versionCode = 14
+        versionName = "8.12.2"
     }
 
     compileOptions {
