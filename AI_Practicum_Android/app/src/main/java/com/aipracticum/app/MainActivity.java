@@ -30,10 +30,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        getWindow().setStatusBarColor(Color.rgb(247, 248, 252));
-        getWindow().setNavigationBarColor(Color.rgb(247, 248, 252));
-        getWindow().getDecorView().setSystemUiVisibility(
-                View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+        applySystemTheme(false);
 
         assetLoader = new WebViewAssetLoader.Builder()
                 .addPathHandler("/assets/", new WebViewAssetLoader.AssetsPathHandler(this))
@@ -80,9 +77,28 @@ public class MainActivity extends Activity {
                 return !("https".equalsIgnoreCase(uri.getScheme())
                         && "appassets.androidplatform.net".equalsIgnoreCase(uri.getHost()));
             }
+
+            @Override
+            public void onPageFinished(WebView view, String url) {
+                view.evaluateJavascript("(function(){function sync(){var t=document.documentElement.dataset.theme;"
+                        + "if(window.AndroidBridge&&(t==='light'||t==='dark'))AndroidBridge.setTheme(t)}"
+                        + "sync();new MutationObserver(sync).observe(document.documentElement,"
+                        + "{attributes:true,attributeFilter:['data-theme']})})()", null);
+            }
         });
 
         webView.loadUrl("https://appassets.androidplatform.net/assets/index.html");
+    }
+
+    private void applySystemTheme(boolean dark) {
+        int barColor = Color.parseColor(dark ? "#0d1422" : "#f4f6fb");
+        getWindow().setStatusBarColor(barColor);
+        getWindow().setNavigationBarColor(barColor);
+
+        int visibility = getWindow().getDecorView().getSystemUiVisibility();
+        int lightBarFlags = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+        getWindow().getDecorView().setSystemUiVisibility(
+                dark ? visibility & ~lightBarFlags : visibility | lightBarFlags);
     }
 
     @Override
@@ -93,6 +109,12 @@ public class MainActivity extends Activity {
     }
 
     private final class AndroidBridge {
+        @JavascriptInterface
+        public void setTheme(String theme) {
+            if (!"light".equals(theme) && !"dark".equals(theme)) return;
+            runOnUiThread(() -> applySystemTheme("dark".equals(theme)));
+        }
+
         @JavascriptInterface
         public boolean saveTextFile(String requestedName, String requestedMime, String content) {
             String filename = sanitizeFilename(requestedName);
